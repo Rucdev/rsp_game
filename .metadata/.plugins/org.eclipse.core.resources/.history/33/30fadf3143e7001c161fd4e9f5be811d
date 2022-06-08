@@ -1,0 +1,16 @@
+package rock_scissors_paper;
+
+public class Test {
+
+	public static void main(String[] args) {
+		// TODO 自動生成されたメソッド・スタブ
+		Stadium testStadium = new Stadium(7);
+		Hand myHand = new Hand(0);
+		if (testStadium.battle(myHand)) {
+			System.out.println("You win!");
+		}else{
+			System.out.println("You lose...");
+		};
+	}
+
+}
