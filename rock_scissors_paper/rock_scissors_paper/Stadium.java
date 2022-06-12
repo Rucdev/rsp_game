@@ -101,7 +101,6 @@ class Judge {
 				winnerList.add(i);
 			}
 		}
-		System.out.println(winnerList.size());
 		return winnerList;
 	}
 }
