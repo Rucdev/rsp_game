@@ -8,39 +8,44 @@ import java.util.Set;
 
 public class Stadium {
 	private List<AutoPlayer> enemys;
-//	private Hand hand1P;
+	private Difficulty difficulty;
 	
-	public Stadium(int numberOfEnemys) {
-		// TODO 自動生成されたコンストラクター・スタブ
+	public Stadium(int numberOfEnemys, Difficulty difficulty) {
+		this.difficulty = difficulty;
 		enemys = new ArrayList<AutoPlayer>();
 		for (int i = 0; i < numberOfEnemys; i++) {
-			enemys.add(new AutoPlayer());
+			enemys.add(new AutoPlayer(this.difficulty));
 		}
 	}
 	
-	public int battle(Hand selectedHand) {
+	public int battle(Hand selectedHand, Hand playerPreviousHand) {
 		List<String> allHands = new ArrayList<String>();
 		allHands.add(selectedHand.getHand().name().toString());
 		System.out.print("You are ");
 		System.out.println(selectedHand.getHand().name());
-		int index = 0;
+
 		for(int i = 0; i < enemys.size(); i++) {
-			enemys.get(i).setRSP();
-			allHands.add(enemys.get(i).getRSP().name().toString());
-			index = index + 1;
+			AutoPlayer currentEnemy = enemys.get(i);
+			// NORMAL以上の難易度の場合、プレイヤーの前の手をAutoPlayerにセット
+			if (this.difficulty == Difficulty.NORMAL || this.difficulty == Difficulty.HARD) {
+				currentEnemy.setPlayerPreviousHand(playerPreviousHand);
+			}
+			currentEnemy.setRSP();
+			allHands.add(currentEnemy.getRSP().name().toString());
 			System.out.print("Enemy" + (i + 1) + " is ");
-			System.out.println(enemys.get(i).getRSP().name());
+			System.out.println(currentEnemy.getRSP().name());
 		};
 		List<Integer> battleResult = Judge.result(allHands);
 
 		// 0があいこ, 1が勝ち, 2が負け
-		if (battleResult.size()==0) {
-			return 0;
-		}
-		else if (battleResult.contains(1)) {
-			return 1;
-		}else{
-			return 2;
+		// Judge.resultは勝者のインデックス(1始まり)のリストを返す。
+		// プレイヤーは常にインデックス1。
+		if (battleResult.isEmpty()) { // あいこの場合は空のリスト
+			return 0; // Draw
+		} else if (battleResult.contains(1)) { // プレイヤー(インデックス1)が勝者リストに含まれていれば勝ち
+			return 1; // Win
+		} else {
+			return 2; // Lose
 		}
 	}
 
@@ -55,50 +60,59 @@ class Judge {
 		Set<String> handPattern = new HashSet<String>(hands);
 		
 		// 勝敗がつくパターン
-		String ROCK ="Rock";
-		String SCISSORS = "Scissors";
-		String PAPER = "Paper";
+		String ROCK ="Rock"; // Hands enumに合わせて修正 (Hands.ROCK.name()などを使うのが望ましいが、現状の文字列比較を踏襲)
+		String SCISSORS = "Scissors"; // Hands.SCISSORS.name()
+		String PAPER = "Paper";     // Hands.PAPER.name()
+
+		// Javaでは文字列比較に `==` ではなく `.equals()` を使うべき。
+		// ただし、このコードベースでは元々 `==` で比較していたため、
+		// `Hand.java` の `getHand().name().toString()` の結果がリテラルと同一インスタンスになるか、
+		// または `HashSet` の挙動に依存している可能性がある。
+		// 本来は修正すべきだが、今回の変更範囲外とし、元のロジックを維持する。
+		// より安全なのは `Hands.ROCK.name()` のような enum の名前を直接使うこと。
+
 		Set<String> RockScissors = new HashSet<String>();
-		RockScissors.add(ROCK);
-		RockScissors.add(SCISSORS);
+		RockScissors.add(ROCK); // "Rock"
+		RockScissors.add(SCISSORS); // "Scissors"
 		
 		Set<String> ScissorsPaper = new HashSet<String>();
-		ScissorsPaper.add(SCISSORS);
-		ScissorsPaper.add(PAPER);
+		ScissorsPaper.add(SCISSORS); // "Scissors"
+		ScissorsPaper.add(PAPER);    // "Paper"
 		
 		Set<String> PaperRock = new HashSet<String>();
-		PaperRock.add(PAPER);
-		PaperRock.add(ROCK);
-		
+		PaperRock.add(PAPER); // "Paper"
+		PaperRock.add(ROCK);  // "Rock"
 		
 		
 		// じゃんけん判定
 		if ((handPattern.size() == 3) || (handPattern.size() == 1)) {
-			// あいこ
-			return new ArrayList<Integer>();
+			// あいこ (3種類の手が出た場合、または1種類の手のみの場合)
+			return new ArrayList<Integer>(); // 空のリストを返す
 		}
 		else if (handPattern.equals(RockScissors)) {
-			// グーの勝ち
+			// グーとチョキのみの場合 -> グーの勝ち
 			return check(hands, ROCK);
 		}else if (handPattern.equals(ScissorsPaper)) {
-			// チョキの勝ち
+			// チョキとパーのみの場合 -> チョキの勝ち
 			return check(hands, SCISSORS);
 		}else if (handPattern.equals(PaperRock)) {
-			// パーの勝ち
+			// パーとグーのみの場合 -> パーの勝ち
 			return check(hands, PAPER);
 		}
 		
-		return results;
+		// 上記のいずれにも当てはまらない場合は、あいことみなす (例: 2人で同じ手)
+		// ただし、handPattern.size() == 1 のチェックで既にカバーされている。
+		// このreturnに到達することは基本的にないはず。
+		return results; // 空のリスト (あいこ)
 	}
 	
-	private static List<Integer> check(List<String> hands, String winner) {
-		// 勝者の配列番号を出す。あいこは[]
+	private static List<Integer> check(List<String> hands, String winnerHandName) {
+		// 勝者の配列インデックス(1始まり)のリストを返す。
 		List<Integer> winnerList = new ArrayList<Integer>();
-		int i = 0;
-		for (String h: hands) {
-			i++;
-			if (h == winner) {
-				winnerList.add(i);
+		for (int i = 0; i < hands.size(); i++) {
+			// 文字列比較は .equals() を使用するべき
+			if (hands.get(i).equals(winnerHandName)) {
+				winnerList.add(i + 1); // インデックスは1始まりなので +1
 			}
 		}
 		return winnerList;
